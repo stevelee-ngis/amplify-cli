@@ -253,9 +253,28 @@ export class Cfn {
         { client: this.gen1App.clients.cloudFormation, maxWaitTime: MAX_WAIT_TIME_SECONDS },
         { StackName: targetStackId },
       );
-    }
 
-    this.info(`Finished refactoring ${sourceStackName} → ${targetStackName}`, resource);
+      // CreateStackRefactor has no way to tag the stack it creates, so the new
+      // holding stack — and the resources moved into it — do not inherit the Gen1
+      // stack's tags. Propagate the source stack's tags so mandatory-tag guardrails
+      // (e.g. Control Tower tag policies) remain satisfied.
+      const tags = sourceStack.Tags ?? [];
+      if (tags.length > 0) {
+        this.info(`Propagating ${tags.length} tag(s) to holding stack: ${targetStackName}`, resource);
+        await this.gen1App.clients.cloudFormation.send(
+          new UpdateStackCommand({
+            StackName: targetStackId,
+            UsePreviousTemplate: true,
+            Capabilities: [CFN_IAM_CAPABILITY],
+            Tags: tags,
+          }),
+        );
+        await waitUntilStackUpdateComplete(
+          { client: this.gen1App.clients.cloudFormation, maxWaitTime: MAX_WAIT_TIME_SECONDS },
+          { StackName: targetStackId },
+        );
+      }
+    }
   }
 
   /**
