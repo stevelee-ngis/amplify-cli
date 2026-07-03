@@ -190,7 +190,7 @@ export class AwsFetcher {
   // ── API Gateway ────────────────────────────────────────────────
 
   public async fetchRestApiRootResourceId(restApiId: string): Promise<string> {
-    const { items } = await this.clients.apiGateway.send(new GetResourcesCommand({ restApiId }));
+    const { items } = await this.clients.apiGateway.send(new GetResourcesCommand({ restApiId, limit: 500 }));
     const root = items?.find((r) => r.path === '/');
     if (!root?.id) {
       throw new AmplifyError('RestApiResourceNotFoundError', {
